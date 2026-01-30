@@ -1,0 +1,30 @@
+{
+  "$schema": "https://json.schemastore.org/package.json",
+  "name": "suintents",
+  "type": "module",
+  "private": true,
+  "packageManager": "bun@1.3.5",
+  "scripts": {
+    "prepare": "husky"
+  },
+  "workspaces": {
+    "packages": [
+      "apps/*",
+      "packages/*"
+    ],
+    "catalog": {}
+  },
+  "devDependencies": {
+    "@biomejs/biome": "2.3.13",
+    "@tsconfig/bun": "catalog:",
+    "husky": "9.1.7",
+    "turbo": "2.7.6"
+  },
+  "dependencies": {
+    "typescript": "catalog:"
+  },
+  "overrides": {
+    "@types/bun": "catalog:",
+    "@types/node": "catalog:"
+  }
+}
