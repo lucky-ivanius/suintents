@@ -21,13 +21,15 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: PropsWithChildren) {
   return (
-    <ThemeProvider attribute="class" defaultTheme="system" storageKey="suintents-theme" enableSystem>
-      <html lang="en" className={cn(inter.variable, geistMono.variable)} suppressHydrationWarning>
-        <body className="min-h-screen antialiased">
+    <html lang="en" className={cn(inter.variable, geistMono.variable)} suppressHydrationWarning>
+      <body className="min-h-screen antialiased">
+        <ThemeProvider attribute="class" defaultTheme="system" storageKey="suintents-theme" enableSystem>
           <Header />
-          {children}
-        </body>
-      </html>
-    </ThemeProvider>
+          <main className="min-h-[calc(100vh-4rem)] w-full bg-linear-to-b from-background to-primary/30 p-4 md:to-primary/50 dark:to-primary/20">
+            {children}
+          </main>
+        </ThemeProvider>
+      </body>
+    </html>
   );
 }
