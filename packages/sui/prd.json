@@ -1,0 +1,406 @@
+[
+  {
+    "category": "Account Management",
+    "description": "create_account function creates a new UserAccount with public key, curve type, and initializes empty balance table",
+    "steps": [
+      "Call create_account with valid secp256k1 public key (33 bytes compressed)",
+      "Verify UserAccount object is created and transferred to caller",
+      "Verify public_key, curve, nonce=0 are set correctly",
+      "Verify balances table is empty",
+      "Verify dwallet_ids table is empty"
+    ],
+    "passes": true
+  },
+  {
+    "category": "Account Management",
+    "description": "create_account supports all three signature curves: secp256k1, secp256r1, ed25519",
+    "steps": [
+      "Create account with curve=0 (secp256k1) and 33-byte compressed public key",
+      "Create account with curve=1 (secp256r1) and 33-byte compressed public key",
+      "Create account with curve=2 (ed25519) and 32-byte public key",
+      "Verify all accounts are created successfully with correct curve values"
+    ],
+    "passes": true
+  },
+  {
+    "category": "Account Management",
+    "description": "create_account rejects invalid public key lengths for each curve",
+    "steps": [
+      "Attempt create_account with curve=0 and 32-byte key (should fail)",
+      "Attempt create_account with curve=2 and 33-byte key (should fail)",
+      "Attempt create_account with empty public key (should fail)",
+      "Verify appropriate error codes are returned"
+    ],
+    "passes": true
+  },
+  {
+    "category": "dWallet Integration",
+    "description": "create_user_dwallet creates Ika dWallet for user account on specified curve",
+    "steps": [
+      "Create user account with secp256k1 curve",
+      "Prepare DKG parameters using Ika SDK",
+      "Call create_user_dwallet with DKG parameters",
+      "Verify dWallet ID is stored in account's dwallet_ids table",
+      "Verify dWallet is created on Ika network"
+    ],
+    "passes": false
+  },
+  {
+    "category": "dWallet Integration",
+    "description": "create_user_dwallet is idempotent - calling twice for same curve does not create duplicate",
+    "steps": [
+      "Create user account",
+      "Call create_user_dwallet for secp256k1 curve",
+      "Record the dWallet ID",
+      "Call create_user_dwallet again for secp256k1",
+      "Verify the same dWallet ID is returned (no new dWallet created)"
+    ],
+    "passes": false
+  },
+  {
+    "category": "dWallet Integration",
+    "description": "Protocol treasury has shared dWallets initialized for each supported curve",
+    "steps": [
+      "Deploy protocol contract",
+      "Call init_treasury_dwallet for secp256k1 (curve=0)",
+      "Call init_treasury_dwallet for ed25519 (curve=2)",
+      "Verify DWalletCap is stored in protocol's treasury_dwallet_caps table",
+      "Verify dWallets are shared type (public_user_secret_key_share is set)"
+    ],
+    "passes": false
+  },
+  {
+    "category": "Asset Management",
+    "description": "Protocol admin can add supported assets with proper configuration",
+    "steps": [
+      "Deploy protocol as admin",
+      "Call add_supported_asset with asset_id='evm:1', curve=0, decimals=18",
+      "Call add_supported_asset with asset_id='solana:mainnet', curve=2, decimals=9",
+      "Verify assets are stored in supported_assets table",
+      "Query asset config and verify all fields are correct"
+    ],
+    "passes": false
+  },
+  {
+    "category": "Asset Management",
+    "description": "Protocol admin can pause/unpause specific assets",
+    "steps": [
+      "Add asset 'evm:8453:usdc' with is_active=true",
+      "Call pause_asset('evm:8453:usdc')",
+      "Verify asset config has is_active=false",
+      "Attempt deposit with paused asset (should fail)",
+      "Call unpause_asset('evm:8453:usdc')",
+      "Verify deposits work again"
+    ],
+    "passes": false
+  },
+  {
+    "category": "Deposit Flow",
+    "description": "confirm_deposit updates user balance and initiates treasury transfer",
+    "steps": [
+      "Create user account with secp256k1 curve",
+      "Create user dWallet",
+      "Call confirm_deposit as relayer with asset_id, amount, transfer_message",
+      "Verify user balance is updated in balances table",
+      "Verify Ika sign request is initiated for user->treasury transfer",
+      "Verify DepositConfirmed event is emitted"
+    ],
+    "passes": false
+  },
+  {
+    "category": "Deposit Flow",
+    "description": "confirm_deposit rejects calls from non-relayer addresses",
+    "steps": [
+      "Create user account",
+      "Attempt confirm_deposit from address that is not protocol.relayer",
+      "Verify transaction fails with EUnauthorized error"
+    ],
+    "passes": false
+  },
+  {
+    "category": "Deposit Flow",
+    "description": "confirm_deposit rejects unsupported asset IDs",
+    "steps": [
+      "Create user account",
+      "Attempt confirm_deposit with asset_id that is not in supported_assets",
+      "Verify transaction fails with EUnsupportedAsset error"
+    ],
+    "passes": false
+  },
+  {
+    "category": "Deposit Flow",
+    "description": "confirm_deposit rejects deposits below minimum amount",
+    "steps": [
+      "Add asset with min_deposit=1000000",
+      "Create user account",
+      "Attempt confirm_deposit with amount=500000",
+      "Verify transaction fails with EBelowMinimum error"
+    ],
+    "passes": false
+  },
+  {
+    "category": "Signature Verification",
+    "description": "Contract correctly verifies secp256k1 signatures (Ethereum/Bitcoin)",
+    "steps": [
+      "Create message bytes",
+      "Sign message with secp256k1 private key (external tool)",
+      "Call verify_signature with public key, message, signature, curve=0",
+      "Verify function returns true",
+      "Modify one byte of signature and verify returns false"
+    ],
+    "passes": true
+  },
+  {
+    "category": "Signature Verification",
+    "description": "Contract correctly verifies secp256r1 signatures (Passkeys/WebAuthn)",
+    "steps": [
+      "Create message bytes",
+      "Sign message with secp256r1 private key (external tool)",
+      "Call verify_signature with public key, message, signature, curve=1",
+      "Verify function returns true",
+      "Modify one byte of signature and verify returns false"
+    ],
+    "passes": true
+  },
+  {
+    "category": "Signature Verification",
+    "description": "Contract correctly verifies ed25519 signatures (Solana)",
+    "steps": [
+      "Create message bytes",
+      "Sign message with ed25519 private key (external tool)",
+      "Call verify_signature with public key, message, signature, curve=2",
+      "Verify function returns true",
+      "Modify one byte of signature and verify returns false"
+    ],
+    "passes": false
+  },
+  {
+    "category": "Intent Execution",
+    "description": "execute_intent atomically swaps balances between user and solver",
+    "steps": [
+      "Create user account with 1000 USDC balance",
+      "Create solver account with 0.5 SOL balance",
+      "Create IntentPayload: user sells 100 USDC for 0.05 SOL",
+      "Sign payload with user's private key",
+      "Sign mirrored payload with solver's private key",
+      "Call execute_intent with both signatures",
+      "Verify user has 900 USDC and 0.05 SOL",
+      "Verify solver has 100 USDC and 0.45 SOL",
+      "Verify IntentExecuted event is emitted"
+    ],
+    "passes": false
+  },
+  {
+    "category": "Intent Execution",
+    "description": "execute_intent increments user nonce after successful execution",
+    "steps": [
+      "Create user account (nonce=0)",
+      "Execute valid intent with nonce=0",
+      "Verify user account nonce is now 1",
+      "Attempt execute intent with nonce=0 again (should fail - replay)",
+      "Execute intent with nonce=1 (should succeed)",
+      "Verify nonce is now 2"
+    ],
+    "passes": false
+  },
+  {
+    "category": "Intent Execution",
+    "description": "execute_intent fails if user has insufficient balance",
+    "steps": [
+      "Create user account with 50 USDC balance",
+      "Create solver account with 1 SOL balance",
+      "Create intent for user to sell 100 USDC",
+      "Sign with valid signatures",
+      "Call execute_intent",
+      "Verify transaction fails with EInsufficientBalance error"
+    ],
+    "passes": false
+  },
+  {
+    "category": "Intent Execution",
+    "description": "execute_intent fails if solver has insufficient balance",
+    "steps": [
+      "Create user account with 1000 USDC balance",
+      "Create solver account with 0.01 SOL balance",
+      "Create intent for solver to provide 0.5 SOL",
+      "Sign with valid signatures",
+      "Call execute_intent",
+      "Verify transaction fails with EInsufficientBalance error"
+    ],
+    "passes": false
+  },
+  {
+    "category": "Intent Execution",
+    "description": "execute_intent fails with invalid user signature",
+    "steps": [
+      "Create user and solver accounts with sufficient balances",
+      "Create valid intent payload",
+      "Sign user payload with wrong private key",
+      "Sign solver payload correctly",
+      "Call execute_intent",
+      "Verify transaction fails with EInvalidSignature error"
+    ],
+    "passes": false
+  },
+  {
+    "category": "Intent Execution",
+    "description": "execute_intent fails with invalid solver signature",
+    "steps": [
+      "Create user and solver accounts with sufficient balances",
+      "Create valid intent payload",
+      "Sign user payload correctly",
+      "Sign solver payload with wrong private key",
+      "Call execute_intent",
+      "Verify transaction fails with EInvalidSignature error"
+    ],
+    "passes": false
+  },
+  {
+    "category": "Withdrawal Flow",
+    "description": "request_withdrawal deducts balance and initiates cross-chain transfer",
+    "steps": [
+      "Create user account with 1000 USDC balance",
+      "Create withdrawal request for 500 USDC to external address",
+      "Sign request with user's private key",
+      "Call request_withdrawal",
+      "Verify user balance is now 500 USDC",
+      "Verify Ika sign request is initiated for treasury->recipient transfer",
+      "Verify WithdrawalRequested event is emitted"
+    ],
+    "passes": false
+  },
+  {
+    "category": "Withdrawal Flow",
+    "description": "request_withdrawal fails with invalid user signature",
+    "steps": [
+      "Create user account with balance",
+      "Create withdrawal request",
+      "Sign with wrong private key",
+      "Call request_withdrawal",
+      "Verify transaction fails with EInvalidSignature error",
+      "Verify balance is unchanged"
+    ],
+    "passes": false
+  },
+  {
+    "category": "Withdrawal Flow",
+    "description": "request_withdrawal fails if amount exceeds balance",
+    "steps": [
+      "Create user account with 100 USDC",
+      "Create withdrawal request for 500 USDC",
+      "Sign correctly",
+      "Call request_withdrawal",
+      "Verify transaction fails with EInsufficientBalance error"
+    ],
+    "passes": false
+  },
+  {
+    "category": "Withdrawal Flow",
+    "description": "request_withdrawal respects minimum withdrawal amount",
+    "steps": [
+      "Configure asset with min_withdrawal=10000",
+      "Create user account with 100000 balance",
+      "Attempt withdrawal of 5000 (below minimum)",
+      "Verify transaction fails with EBelowMinimum error"
+    ],
+    "passes": false
+  },
+  {
+    "category": "Presign Management",
+    "description": "Protocol maintains presign pool for treasury signing operations",
+    "steps": [
+      "Initialize treasury dWallet",
+      "Call replenish_presigns with count=5",
+      "Verify presigns vector has 5 elements",
+      "Execute withdrawal (consumes 1 presign)",
+      "Verify presigns vector has 4 elements"
+    ],
+    "passes": false
+  },
+  {
+    "category": "Presign Management",
+    "description": "Signing operations fail gracefully when presign pool is empty",
+    "steps": [
+      "Initialize treasury with 1 presign",
+      "Execute withdrawal (consumes presign)",
+      "Attempt another withdrawal",
+      "Verify transaction fails with ENoPresignsAvailable error"
+    ],
+    "passes": false
+  },
+  {
+    "category": "Protocol Administration",
+    "description": "Admin can update relayer address",
+    "steps": [
+      "Deploy protocol with relayer=ADDRESS_A",
+      "Call set_relayer(ADDRESS_B) as admin",
+      "Verify protocol.relayer is now ADDRESS_B",
+      "Verify confirm_deposit works from ADDRESS_B",
+      "Verify confirm_deposit fails from ADDRESS_A"
+    ],
+    "passes": false
+  },
+  {
+    "category": "Protocol Administration",
+    "description": "Admin can pause entire protocol",
+    "steps": [
+      "Deploy protocol with is_paused=false",
+      "Call pause_protocol() as admin",
+      "Verify is_paused=true",
+      "Attempt execute_intent (should fail with EPaused)",
+      "Attempt request_withdrawal (should fail with EPaused)",
+      "Call unpause_protocol()",
+      "Verify operations work again"
+    ],
+    "passes": false
+  },
+  {
+    "category": "Protocol Administration",
+    "description": "Non-admin cannot call admin functions",
+    "steps": [
+      "Deploy protocol with admin=ADDRESS_A",
+      "Attempt set_relayer() from ADDRESS_B",
+      "Verify fails with EUnauthorized",
+      "Attempt pause_protocol() from ADDRESS_B",
+      "Verify fails with EUnauthorized"
+    ],
+    "passes": false
+  },
+  {
+    "category": "Fee Management",
+    "description": "Protocol can receive IKA and SUI for Ika operation fees",
+    "steps": [
+      "Deploy protocol",
+      "Transfer IKA coins to protocol via add_ika_balance()",
+      "Transfer SUI coins to protocol via add_sui_balance()",
+      "Verify ika_balance and sui_balance are updated",
+      "Execute dWallet operation and verify balances decrease appropriately"
+    ],
+    "passes": false
+  },
+  {
+    "category": "Events",
+    "description": "All state-changing operations emit appropriate events",
+    "steps": [
+      "Call create_account, verify AccountCreated event",
+      "Call create_user_dwallet, verify DWalletCreated event",
+      "Call confirm_deposit, verify DepositConfirmed event",
+      "Call execute_intent, verify IntentExecuted event",
+      "Call request_withdrawal, verify WithdrawalRequested event"
+    ],
+    "passes": false
+  },
+  {
+    "category": "Balance Queries",
+    "description": "Users can query their balances for any asset",
+    "steps": [
+      "Create user account",
+      "Confirm deposit of 1000 USDC",
+      "Confirm deposit of 0.5 SOL",
+      "Query balance for 'evm:8453:usdc', verify 1000",
+      "Query balance for 'solana:mainnet', verify 0.5 SOL equivalent",
+      "Query balance for non-existent asset, verify 0"
+    ],
+    "passes": true
+  }
+]

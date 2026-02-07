@@ -15,8 +15,9 @@ Inspired by [Near Intents](https://near.org/intents), built natively on Sui.
 ```
 1. Connect Wallet    →  dWallet created via Ika's Distributed Key Generation
 2. Deposit           →  Send to your unique address, balance credited on Sui
-3. Submit Intent     →  "I want to swap 100 USDC for SOL"
-4. Solvers Compete   →  Market makers bid, best quote wins
+3. Quote             →  Request quote from solvers
+3. Solvers Compete   →  Market makers bid, best quote wins
+4. Submit Intent     →  "I want to swap 100 USDC for 0.1 SOL"
 5. Instant Swap      →  Single Sui transaction (atomic)
 6. Withdraw Anytime  →  Ika signs tx to your destination on any chain
 ```
