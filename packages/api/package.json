@@ -1,17 +1,16 @@
 {
-  "name": "@suintents/rfq",
-  "type": "module",
+  "name": "@suintents/api",
   "scripts": {
-    "dev": "bun --hot run src/index.ts"
+    "dev": "bun run --hot src/index.ts"
   },
   "dependencies": {
-    "@hono/zod-validator": "0.7.6",
     "@mysten/sui": "2.3.1",
-    "hono": "4.11.8",
+    "hono": "4.11.9",
     "uuid": "13.0.0",
-    "zod": "4.3.6"
+    "zod": "catalog:"
   },
   "devDependencies": {
+    "@total-typescript/ts-reset": "catalog:",
     "@types/bun": "catalog:",
     "typescript": "catalog:"
   }
