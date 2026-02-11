@@ -1,8 +1,10 @@
 "use client";
 
 import { HugeiconsIcon } from "@hugeicons/react";
+import { addressEllipsis, useWallet } from "@suiet/wallet-kit";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useState } from "react";
 
 import { MOBILE_NAVIGATIONS, NAVIGATIONS } from "@/config/navigations";
 import { cn } from "@/lib/utils";
@@ -10,9 +12,13 @@ import { cn } from "@/lib/utils";
 import { Logo } from "./logo";
 import { ThemeSelector } from "./theme-selector";
 import { Button } from "./ui/button";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "./ui/dropdown-menu";
+import { WalletSelector } from "./wallet-selector";
 
 export function Header() {
   const pathname = usePathname();
+  const { account, connected, disconnect } = useWallet();
+  const [walletSelectorOpen, setWalletSelectorOpen] = useState(false);
 
   return (
     <>
@@ -37,9 +43,30 @@ export function Header() {
           </nav>
           <div className="flex items-center justify-end gap-4">
             <ThemeSelector />
-            <Button size="lg" className="px-6 font-bold">
-              Connect
-            </Button>
+            {!connected ? (
+              <>
+                <Button size="lg" className="px-6 font-bold" onClick={() => setWalletSelectorOpen(true)}>
+                  Connect
+                </Button>
+                <WalletSelector open={walletSelectorOpen} onOpenChange={(open) => setWalletSelectorOpen(open)} />
+              </>
+            ) : (
+              <DropdownMenu>
+                <DropdownMenuTrigger
+                  render={
+                    <Button size="lg" className="px-6 font-bold">
+                      {account ? addressEllipsis(account.address) : null}
+                    </Button>
+                  }
+                />
+                <DropdownMenuContent align="end" className="min-w-50">
+                  <DropdownMenuItem className="focus:bg-primary focus:text-primary-foreground" render={<Link href="/account">Account</Link>} />
+                  <DropdownMenuItem variant="destructive" onClick={disconnect}>
+                    Disconnect
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            )}
           </div>
         </div>
       </header>

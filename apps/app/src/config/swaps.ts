@@ -1,107 +1,95 @@
-import type { Asset, AssetWithBalance, Network } from "@/typings/swap";
+import type { Asset, Network } from "@suintents/core";
 
-export const networks: Network[] = [
-  {
-    id: "bitcoin:mainnet",
-    name: "Bitcoin",
-  },
-  {
-    id: "evm:1",
-    name: "Ethereum",
-  },
-  {
-    id: "evm:8453",
-    name: "Base",
-  },
-  {
-    id: "evm:42161",
-    name: "Arbitrum",
-  },
-  {
-    id: "sui:mainnet",
-    name: "Sui",
-  },
-];
+import type { AssetMap, AssetMetadata, NetworkMap, NetworkMetadata } from "@/typings/swap";
 
-export const networkMap = Object.fromEntries(networks.map((network) => [network.id, network]));
+export const networks: NetworkMap = {
+  "bip122:000000000019d6689c085ae165831e93": { name: "Bitcoin" },
+  "eip155:1": { name: "Ethereum" },
+  "eip155:8453": { name: "Base" },
+  "eip155:42161": { name: "Arbitrum" },
+  "sui:mainnet": { name: "Sui" },
+  "solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp": { name: "Solana" },
+};
 
-export const getNetworkById = (id: string): Network | null => networkMap[id] ?? null;
-
-export const assets: Asset[] = [
-  {
-    id: "bitcoin:mainnet:bitcoin",
-    network: "bitcoin:mainnet",
+export const assets: AssetMap = {
+  "bip122:000000000019d6689c085ae165831e93:btc": {
     symbol: "BTC",
     name: "Bitcoin",
     decimals: 8,
+    network: "bip122:000000000019d6689c085ae165831e93",
   },
-  {
-    id: "evm:1:eth",
-    network: "evm:1",
+  "eip155:1:eth": {
     symbol: "ETH",
     name: "Ethereum",
     decimals: 18,
+    network: "eip155:1",
   },
-  {
-    id: "evm:1:usdc",
-    network: "evm:1",
-    symbol: "USDC",
-    name: "USDC",
+  "eip155:1:usdt": {
+    symbol: "USDT",
+    name: "Tether",
     decimals: 6,
+    network: "eip155:1",
   },
-  {
-    id: "evm:8453:eth",
-    network: "evm:8453",
+  "eip155:1:usdc": {
+    symbol: "USDC",
+    name: "USD Coin",
+    decimals: 6,
+    network: "eip155:1",
+  },
+  "eip155:8453:eth": {
     symbol: "ETH",
     name: "Ethereum",
     decimals: 18,
+    network: "eip155:8453",
   },
-  {
-    id: "evm:8453:usdc",
-    network: "evm:8453",
+  "eip155:8453:usdc": {
     symbol: "USDC",
-    name: "USDC",
+    name: "USD Coin",
     decimals: 6,
+    network: "eip155:8453",
   },
-  {
-    id: "evm:42161:eth",
-    network: "evm:42161",
+  "eip155:42161:eth": {
     symbol: "ETH",
     name: "Ethereum",
     decimals: 18,
+    network: "eip155:42161",
   },
-  {
-    id: "evm:42161:usdc",
-    network: "evm:42161",
+  "eip155:42161:usdc": {
     symbol: "USDC",
-    name: "USDC",
+    name: "USD Coin",
     decimals: 6,
+    network: "eip155:42161",
   },
-  {
-    id: "sui:mainnet:sui",
-    network: "sui:mainnet",
+  "sui:mainnet:sui": {
     symbol: "SUI",
     name: "Sui",
     decimals: 9,
-  },
-  {
-    id: "sui:mainnet:usdc",
     network: "sui:mainnet",
-    symbol: "USDC",
-    name: "USDC",
-    decimals: 6,
   },
-];
+  "sui:mainnet:usdc": {
+    symbol: "USDC",
+    name: "USD Coin",
+    decimals: 6,
+    network: "sui:mainnet",
+  },
+  "solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp:sol": {
+    symbol: "SOL",
+    name: "Solana",
+    decimals: 9,
+    network: "solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp",
+  },
+  "solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp:usdc": {
+    symbol: "USDC",
+    name: "USD Coin",
+    decimals: 6,
+    network: "solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp",
+  },
+};
 
-export const assetMap = Object.fromEntries(assets.map((asset) => [asset.id, asset]));
+export function getAssetMetadata(id: string): AssetMetadata | undefined {
+  return assets[id as Asset];
+}
 
-export const getAssetById = (id: string): Asset | null => assetMap[id] ?? null;
-
-export const assetsWithBalance: AssetWithBalance[] = assets.map<AssetWithBalance>((asset) => ({
-  ...asset,
-  balance: 10,
-}));
-
-export const assetWithBalanceMap = Object.fromEntries(assetsWithBalance.map((asset) => [asset.id, asset]));
-
-export const getAssetWithBalanceById = (id: string): AssetWithBalance | null => assetWithBalanceMap[id] ?? null;
+export function getNetworkMetadata(id: string): NetworkMetadata | undefined {
+  return networks[id as Network];
+}

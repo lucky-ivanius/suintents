@@ -3,7 +3,6 @@ import { redirect } from "next/navigation";
 
 import type { SearchParams } from "@/lib/search-params";
 import { SwapCard } from "@/components/swap-card";
-import { assetsWithBalance, networks } from "@/config/swaps";
 import { toArray } from "@/lib/search-params";
 
 const SwapPage: NextPage<{ searchParams: Promise<SearchParams> }> = async ({ searchParams }) => {
@@ -16,7 +15,7 @@ const SwapPage: NextPage<{ searchParams: Promise<SearchParams> }> = async ({ sea
 
   return (
     <div className="flex items-center justify-center md:pt-16">
-      <SwapCard from={from} to={to} assets={assetsWithBalance} networks={networks} />
+      <SwapCard from={from} to={to} />
     </div>
   );
 };

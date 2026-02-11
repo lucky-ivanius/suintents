@@ -4,39 +4,40 @@ import { Search01Icon } from "@hugeicons/core-free-icons";
 import { HugeiconsIcon } from "@hugeicons/react";
 import { useMemo, useState } from "react";
 
-import type { Asset, AssetWithBalance, Network } from "@/typings/swap";
+import type { AssetMetadata, NetworkMetadata } from "@/typings/swap";
 import { Avatar, AvatarBadge, AvatarFallback } from "@/components/ui/avatar";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { InputGroup, InputGroupAddon, InputGroupInput, InputGroupText } from "@/components/ui/input-group";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { getNetworkById } from "@/config/swaps";
 import { cn } from "@/lib/utils";
 
 interface AssetSelectorProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  assets: AssetWithBalance[];
-  networks: Network[];
+  assets: Record<string, AssetMetadata>;
+  networks: Record<string, NetworkMetadata>;
   value?: string;
-  onSelect: (asset: Asset) => void;
+  onSelect: (assetId: string) => void;
 }
 
 function AssetSelector({ open, onOpenChange, assets, networks, value, onSelect }: AssetSelectorProps) {
   const [search, setSearch] = useState("");
   const [selectedNetwork, setSelectedNetwork] = useState<string | null>(null);
 
+  const assetEntries = useMemo(() => Object.entries(assets), [assets]);
+  const networkEntries = useMemo(() => Object.entries(networks), [networks]);
+
   const filteredAssets = useMemo(() => {
     const query = search.toLowerCase();
-    return assets.filter((asset) => {
-      const matchesSearch =
-        !query || asset.id.toLowerCase().includes(query) || asset.symbol.toLowerCase().includes(query) || asset.name.toLowerCase().includes(query);
-      const matchesNetwork = !selectedNetwork || asset.network === selectedNetwork;
+    return assetEntries.filter(([id, meta]) => {
+      const matchesSearch = !query || id.toLowerCase().includes(query) || meta.symbol.toLowerCase().includes(query) || meta.name.toLowerCase().includes(query);
+      const matchesNetwork = !selectedNetwork || meta.network === selectedNetwork;
       return matchesSearch && matchesNetwork;
     });
-  }, [assets, search, selectedNetwork]);
+  }, [assetEntries, search, selectedNetwork]);
 
-  function handleSelect(asset: Asset) {
-    onSelect(asset);
+  function handleSelect(assetId: string) {
+    onSelect(assetId);
     onOpenChange(false);
     setSearch("");
     setSelectedNetwork(null);
@@ -54,7 +55,7 @@ function AssetSelector({ open, onOpenChange, assets, networks, value, onSelect }
                   <HugeiconsIcon icon={Search01Icon} />
                 </InputGroupText>
               </InputGroupAddon>
-              <InputGroupInput placeholder="Search by name, symbol, or address" value={search} onChange={(e) => setSearch(e.target.value)} />
+              <InputGroupInput placeholder="Search by name or symbol" value={search} onChange={(e) => setSearch(e.target.value)} />
             </InputGroup>
           </div>
           <div className="border-b px-4 pb-3">
@@ -64,9 +65,9 @@ function AssetSelector({ open, onOpenChange, assets, networks, value, onSelect }
                   {selectedNetwork ? (
                     <>
                       <Avatar size="sm">
-                        <AvatarFallback>{getNetworkById(selectedNetwork)?.name.charAt(0) ?? "?"}</AvatarFallback>
+                        <AvatarFallback>{networks[selectedNetwork]?.name.charAt(0) ?? "?"}</AvatarFallback>
                       </Avatar>
-                      {getNetworkById(selectedNetwork)?.name ?? selectedNetwork}
+                      {networks[selectedNetwork]?.name ?? selectedNetwork}
                     </>
                   ) : (
                     <>
@@ -85,12 +86,12 @@ function AssetSelector({ open, onOpenChange, assets, networks, value, onSelect }
                   </Avatar>
                   All networks
                 </SelectItem>
-                {networks.map((network) => (
-                  <SelectItem key={network.id} value={network.id}>
+                {networkEntries.map(([id, meta]) => (
+                  <SelectItem key={id} value={id}>
                     <Avatar size="sm">
-                      <AvatarFallback>{network.name.charAt(0)}</AvatarFallback>
+                      <AvatarFallback>{meta.name.charAt(0)}</AvatarFallback>
                     </Avatar>
-                    {network.name}
+                    {meta.name}
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -102,35 +103,30 @@ function AssetSelector({ open, onOpenChange, assets, networks, value, onSelect }
             <p className="py-8 text-center text-muted-foreground text-sm">No tokens found</p>
           ) : (
             <ul>
-              {filteredAssets.map((asset) => {
-                const network = getNetworkById(asset.network);
+              {filteredAssets.map(([id, meta]) => {
+                const networkMeta = networks[meta.network];
 
                 return (
-                  <li key={asset.id}>
+                  <li key={id}>
                     <button
                       type="button"
-                      onClick={() => handleSelect(asset)}
+                      onClick={() => handleSelect(id)}
                       className={cn(
                         "flex w-full items-center gap-3 px-4 py-2.5 text-left transition-colors hover:bg-input/50 focus-visible:bg-input/50 focus-visible:outline-none",
-                        value === asset.id && "bg-input/20"
+                        value === id && "bg-input/20"
                       )}
                     >
                       <Avatar size="lg">
-                        <AvatarFallback>{asset.symbol.slice(0, 2)}</AvatarFallback>
-                        {network && <AvatarBadge className="bg-transparent ring-0">{network.name.charAt(0)}</AvatarBadge>}
+                        <AvatarFallback>{meta.symbol.slice(0, 2)}</AvatarFallback>
+                        {networkMeta && <AvatarBadge className="bg-transparent ring-0">{networkMeta.name.charAt(0)}</AvatarBadge>}
                       </Avatar>
                       <div className="min-w-0 flex-1">
                         <div className="flex items-center gap-2">
-                          <span className="font-medium">{asset.symbol}</span>
-                          <span className="text-muted-foreground text-xs">{asset.name}</span>
+                          <span className="font-medium">{meta.symbol}</span>
+                          <span className="text-muted-foreground text-xs">{meta.name}</span>
                         </div>
-                        <p className="truncate text-muted-foreground text-xs">{network?.name ?? asset.network}</p>
+                        <p className="truncate text-muted-foreground text-xs">{networkMeta?.name ?? meta.network}</p>
                       </div>
-                      {asset.balance && (
-                        <span className="font-semibold">
-                          {asset.balance} {asset.symbol}
-                        </span>
-                      )}
                     </button>
                   </li>
                 );
