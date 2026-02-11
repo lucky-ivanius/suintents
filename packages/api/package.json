@@ -1,0 +1,19 @@
+{
+  "name": "@suintents/api",
+  "scripts": {
+    "dev": "bun run --hot src/index.ts"
+  },
+  "dependencies": {
+    "@mysten/sui": "catalog:",
+    "@suintents/core": "workspace:*",
+    "@suintents/sui-types": "workspace:*",
+    "hono": "4.11.9",
+    "uuid": "13.0.0",
+    "zod": "catalog:"
+  },
+  "devDependencies": {
+    "@total-typescript/ts-reset": "catalog:",
+    "@types/bun": "catalog:",
+    "typescript": "catalog:"
+  }
+}
