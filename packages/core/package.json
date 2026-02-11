@@ -1,0 +1,22 @@
+{
+  "name": "@suintents/core",
+  "module": "src/index.ts",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./asset": "./src/asset.ts",
+    "./bytes": "./src/bytes.ts",
+    "./codec": "./src/codec.ts",
+    "./network": "./src/network.ts",
+    "./quote": "./src/quote.ts",
+    "./signature": "./src/signature.ts"
+  },
+  "dependencies": {
+    "zod": "catalog:"
+  },
+  "devDependencies": {
+    "@total-typescript/ts-reset": "catalog:",
+    "@types/bun": "catalog:",
+    "typescript": "catalog:"
+  }
+}

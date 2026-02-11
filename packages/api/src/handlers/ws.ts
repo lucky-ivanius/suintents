@@ -1,11 +1,9 @@
 import { Hono } from "hono";
 import { upgradeWebSocket } from "hono/bun";
 import { v4 } from "uuid";
-import z from "zod";
+import { z } from "zod";
 
-import type { Env } from "../env";
-import type { SuintentsAlgorithm } from "../lib/sui";
-import { byteArrayToBytes } from "../core/bytes";
+import { byteArrayToBytes } from "@suintents/core/bytes";
 import {
   quoteExactAmountInSchema,
   quoteExactAmountOutSchema,
@@ -13,9 +11,11 @@ import {
   quoteOfferExactAmountOutSchema,
   quoteOfferStore,
   quoteStore,
-} from "../core/quote";
+} from "@suintents/core/quote";
+import { getAlgorithmName, intentPayloadStruct } from "@suintents/sui-types";
+
+import type { Env } from "../env";
 import { verifySignedMessage } from "../lib/crypto";
-import { getSuintentsAlgorithmName, suintentsIntentPayloadStruct } from "../lib/sui";
 
 const wsHandlers = new Hono<Env>();
 
@@ -84,7 +84,7 @@ wsHandlers.all("/", (c, next) => {
 
         const quote = quoteStore.decode(storedQuote);
 
-        const solverIntentPayload = suintentsIntentPayloadStruct.parse(signedQuoteOffer.signedMessage.message);
+        const solverIntentPayload = intentPayloadStruct.parse(signedQuoteOffer.signedMessage.message);
 
         if (quote.assetIn !== solverIntentPayload.asset_out) return;
         if (quote.assetOut !== solverIntentPayload.asset_in) return;
@@ -100,7 +100,7 @@ wsHandlers.all("/", (c, next) => {
             return;
         }
 
-        const algorithm = getSuintentsAlgorithmName(solverIntentPayload.algorithm as SuintentsAlgorithm);
+        const algorithm = getAlgorithmName(solverIntentPayload.algorithm);
         if (!algorithm) return;
 
         const isValidSignedMessage = verifySignedMessage(algorithm, signedQuoteOffer.signedMessage);

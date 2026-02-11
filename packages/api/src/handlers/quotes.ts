@@ -4,13 +4,11 @@ import { SUI_CLOCK_OBJECT_ID } from "@mysten/sui/utils";
 import { Hono } from "hono";
 import { validator } from "hono/validator";
 import { v4 } from "uuid";
-import z from "zod";
+import { z } from "zod";
 
-import type { Quote } from "../core/quote";
-import type { Env } from "../env";
-import type { SuintentsAlgorithm } from "../lib/sui";
-import { asset } from "../core/asset";
-import { byteArrayToBytes, bytesToByteArray } from "../core/bytes";
+import type { Quote } from "@suintents/core/quote";
+import { asset } from "@suintents/core/asset";
+import { byteArrayToBytes, bytesToByteArray } from "@suintents/core/bytes";
 import {
   quoteExactAmountInSchema,
   quoteExactAmountOutSchema,
@@ -18,16 +16,12 @@ import {
   quoteOfferExactAmountOutSchema,
   quoteOfferStore,
   quoteStore,
-} from "../core/quote";
+} from "@suintents/core/quote";
+import { getAlgorithmName, intentPayloadStruct } from "@suintents/sui-types";
+
+import type { Env } from "../env";
 import { verifySignedMessage } from "../lib/crypto";
-import {
-  getSuintentsAlgorithmName,
-  suintentsIntentPayloadStruct,
-  suintentsModule,
-  suintentsPackageId,
-  suintentsStateObjectId,
-  toSuintentsSignedMessage,
-} from "../lib/sui";
+import { suintentsModule, suintentsPackageId, suintentsStateObjectId, toSuintentsSignedMessage } from "../lib/sui";
 import { badRequest, notFound, ok } from "../utils/response";
 import { fromSchema } from "../utils/validation";
 
@@ -165,7 +159,7 @@ quoteHandlers.post(
 
     const quote = quoteStore.decode(storedQuote);
 
-    const userIntentPayload = suintentsIntentPayloadStruct.parse(signedMessage.message);
+    const userIntentPayload = intentPayloadStruct.parse(signedMessage.message);
 
     if (quote.assetIn !== userIntentPayload.asset_in) return;
     if (quote.assetOut !== userIntentPayload.asset_out) return;
@@ -181,7 +175,7 @@ quoteHandlers.post(
         return;
     }
 
-    const algorithm = getSuintentsAlgorithmName(userIntentPayload.algorithm as SuintentsAlgorithm);
+    const algorithm = getAlgorithmName(userIntentPayload.algorithm);
     if (!algorithm) return badRequest(c, { code: "unsupported_algorithm", message: "Unsupported signing algorithm" });
 
     const isValidSignedMessage = verifySignedMessage(algorithm, signedMessage);

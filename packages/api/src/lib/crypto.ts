@@ -1,7 +1,7 @@
 import { Ed25519PublicKey } from "@mysten/sui/keypairs/ed25519";
 
-import type { Bytes } from "../core/bytes";
-import type { Algorithm, SignedMessage } from "../core/signature";
+import type { Bytes } from "@suintents/core/bytes";
+import type { Algorithm, SignedMessage } from "@suintents/core/signature";
 
 export const verifyEd25519 = (publicKey: Bytes, signature: Bytes, payload: Bytes) => {
   const ed25519PublicKey = new Ed25519PublicKey(publicKey);

@@ -2,7 +2,7 @@ import type { RedisClient } from "bun";
 import type { Keypair } from "@mysten/sui/cryptography";
 import type { SuiGrpcClient } from "@mysten/sui/grpc";
 import type { SuiJsonRpcClient } from "@mysten/sui/jsonRpc";
-import z from "zod";
+import { z } from "zod";
 
 export const envVarsSchema = z.object({
   PORT: z.coerce.number().pipe(z.uint32().min(1).max(65535)),
