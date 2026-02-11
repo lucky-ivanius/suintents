@@ -294,6 +294,9 @@ fun deserialize_signed_intent(bytes: vector<u8>): SignedIntent {
     let signature = bcs.peel_vec_u8();
     let public_key = bcs.peel_vec_u8();
 
+    let remainder = bcs.into_remainder_bytes();
+    assert!(vector::length(&remainder) == 0, EInvalidSignature);
+
     SignedIntent {
         payload,
         signature,

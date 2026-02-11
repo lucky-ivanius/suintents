@@ -181,7 +181,10 @@ quoteHandlers.post(
         return;
     }
 
-    const isValidSignedMessage = verifySignedMessage(getSuintentsAlgorithmName(userIntentPayload.algorithm as SuintentsAlgorithm), signedMessage);
+    const algorithm = getSuintentsAlgorithmName(userIntentPayload.algorithm as SuintentsAlgorithm);
+    if (!algorithm) return badRequest(c, { code: "unsupported_algorithm", message: "Unsupported signing algorithm" });
+
+    const isValidSignedMessage = verifySignedMessage(algorithm, signedMessage);
     if (!isValidSignedMessage) return;
 
     const userSuintentsSignedMessage = toSuintentsSignedMessage(signedMessage);

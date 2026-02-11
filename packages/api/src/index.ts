@@ -22,8 +22,9 @@ await redis.connect();
 await redisPublisher.connect();
 await redisSubscriber.connect();
 
-const suiJsonRpcClient = new SuiJsonRpcClient({ network: "testnet", url: envVars.SUI_RPC_URL });
-const suiGrpcClient = new SuiGrpcClient({ network: "testnet", baseUrl: "https://fullnode.testnet.sui.io:443" });
+const suiJsonRpcClient = new SuiJsonRpcClient({ network: envVars.SUI_NETWORK, url: envVars.SUI_RPC_URL });
+const suiGrpcClient = new SuiGrpcClient({ network: envVars.SUI_NETWORK, baseUrl: envVars.SUI_GRPC_URL });
+
 const relayerKeypair = Ed25519Keypair.fromSecretKey(envVars.RELAYER_PRIVATE_KEY);
 
 const app = new Hono<Env>();

@@ -9,7 +9,9 @@ export const envVarsSchema = z.object({
 
   REDIS_URL: z.url(),
 
+  SUI_NETWORK: z.enum(["devnet", "testnet", "mainnet"]),
   SUI_RPC_URL: z.url(),
+  SUI_GRPC_URL: z.url(),
 
   SUINTENTS_PACKAGE_ID: z.templateLiteral(["0x", z.string()]),
   SUINTENTS_MODULE: z.string(),

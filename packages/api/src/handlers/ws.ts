@@ -20,7 +20,7 @@ import { getSuintentsAlgorithmName, suintentsIntentPayloadStruct } from "../lib/
 const wsHandlers = new Hono<Env>();
 
 /* Subscribe quotes - WS / */
-const quoteRecievedJsonMessageSchema = z.discriminatedUnion("type", [
+const quoteReceivedJsonMessageSchema = z.discriminatedUnion("type", [
   quoteExactAmountInSchema.extend({
     exactAmountIn: z.bigint().transform(String),
   }),
@@ -61,7 +61,7 @@ wsHandlers.all("/", (c, next) => {
       onOpen: (_e, ws) => {
         redisSubscriber.subscribe("quotes", async (msg) => {
           const quote = quoteStore.decode(msg);
-          const quoteJson = quoteRecievedJsonMessageSchema.parse(quote);
+          const quoteJson = quoteReceivedJsonMessageSchema.parse(quote);
 
           ws.send(JSON.stringify(quoteJson));
         });
@@ -100,10 +100,10 @@ wsHandlers.all("/", (c, next) => {
             return;
         }
 
-        const isValidSignedMessage = verifySignedMessage(
-          getSuintentsAlgorithmName(solverIntentPayload.algorithm as SuintentsAlgorithm),
-          signedQuoteOffer.signedMessage
-        );
+        const algorithm = getSuintentsAlgorithmName(solverIntentPayload.algorithm as SuintentsAlgorithm);
+        if (!algorithm) return;
+
+        const isValidSignedMessage = verifySignedMessage(algorithm, signedQuoteOffer.signedMessage);
         if (!isValidSignedMessage) return;
 
         const quoteOfferId = v4();
@@ -112,11 +112,14 @@ wsHandlers.all("/", (c, next) => {
           ...signedQuoteOffer,
         });
 
-        const ttlSeconds = Math.ceil(signedQuoteOffer.deadline - Date.now() / 1000);
+        const ttlSeconds = Math.ceil((signedQuoteOffer.deadline - Date.now()) / 1000);
         await Promise.all([
           redis.setex(`quote-offer:${quoteOfferId}`, ttlSeconds, quoteOffer),
           redis.lpush(`quote:${signedQuoteOffer.quoteId}:offers`, quoteOfferId),
         ]);
+      },
+      onClose: () => {
+        redisSubscriber.unsubscribe("quotes");
       },
     };
   })(c, next);
