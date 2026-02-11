@@ -5,9 +5,7 @@ module suintents::suintents;
 
 use sui::table::{Self, Table};
 use sui::ed25519;
-use sui::ecdsa_r1;
 use sui::event;
-use sui::hash;
 use sui::clock::{Self, Clock};
 use sui::bcs::{Self, BCS};
 use std::string::{Self, String};
@@ -17,8 +15,12 @@ const EInsufficientBalance: u64 = 3;
 const EZeroAmount: u64 = 4;
 const EInvalidSignature: u64 = 5;
 const EInvalidNonce: u64 = 6;
-const EIntentExpired: u64 = 7;
-const EInvalidIntentMatching: u64 = 8;
+const EInvalidAsset: u64 = 7;
+const EIntentExpired: u64 = 8;
+const EInvalidIntentMatching: u64 = 9;
+const ESelfTrade: u64 = 10;
+
+const ALGORITHM_ED25519: u8 = 1;
 
 // Events
 public struct AccountDeposited has copy, drop {
@@ -35,18 +37,17 @@ public struct WithdrawRequested has copy, drop {
     timestamp: u64
 }
 
-public struct IntentExecuted has copy, drop {
-    maker: vector<u8>,
-    taker: vector<u8>,
-    maker_asset_in: String,
-    maker_amount_in: u256,
-    maker_asset_out: String,
-    maker_amount_out: u256,
+public struct ExecutedIntent has copy, drop {
+    public_key: vector<u8>,
+    asset_in: String,
+    amount_in: u256,
+    asset_out: String,
+    amount_out: u256
+}
 
-    taker_asset_in: String,
-    taker_amount_in: u256,
-    taker_asset_out: String,
-    taker_amount_out: u256,
+public struct IntentExecuted has copy, drop {
+    executed_intent_a: ExecutedIntent,
+    executed_intent_b: ExecutedIntent,
 
     timestamp: u64
 }
@@ -64,6 +65,7 @@ public struct Account has store {
 }
 
 public struct IntentPayload has drop, copy {
+  algorithm: u8,
   nonce: vector<u8>,
   asset_in: String,
   amount_in: u256,
@@ -73,7 +75,6 @@ public struct IntentPayload has drop, copy {
 }
 
 public struct SignedIntent has drop, copy {
-  algorithm: u8,
   payload: IntentPayload,
   signature: vector<u8>,
   public_key: vector<u8>,
@@ -95,9 +96,9 @@ fun init(ctx: &mut TxContext) {
     transfer::share_object(state);
 }
 
-public entry fun deposit(
-    _: &AdminCap,
+entry fun deposit(
     state: &mut State,
+    _admin_cap: &AdminCap,
     public_key: vector<u8>,
     asset: String,
     amount: u256,
@@ -130,13 +131,13 @@ public entry fun deposit(
     });
 }
 
-public entry fun withdraw(
-    _: &AdminCap,
+entry fun withdraw(
     state: &mut State,
+    _admin_cap: &AdminCap,
     public_key: vector<u8>,
     asset: String,
     amount: u256,
-    ctx: &mut TxContext,
+    ctx: &TxContext,
 ) {
     assert!(amount > 0, EZeroAmount);
     let account = state.accounts.borrow_mut(public_key);
@@ -153,7 +154,7 @@ public entry fun withdraw(
     });
 }
 
-public entry fun execute_intents(
+entry fun execute_intents(
     state: &mut State,
     signed_intent_a: vector<u8>,
     signed_intent_b: vector<u8>,
@@ -166,25 +167,35 @@ public entry fun execute_intents(
     let intent_b = deserialize_signed_intent(signed_intent_b);
     validate_signed_intent(state, &intent_b, clock);
 
+    assert!(intent_a.public_key != intent_b.public_key, ESelfTrade);
+    assert!(intent_a.payload.nonce != intent_b.payload.nonce, EInvalidNonce);
+
     validate_matching_intents(&intent_a.payload, &intent_b.payload);
 
     // Swap assets
-    transfer(state, intent_a.public_key, intent_b.public_key, intent_a.payload.asset_out, intent_a.payload.amount_out);
-    transfer(state, intent_b.public_key, intent_a.public_key, intent_b.payload.asset_out, intent_b.payload.amount_out);
+    state.transfer(intent_a.public_key, intent_b.public_key, intent_a.payload.asset_in, intent_a.payload.amount_in);
+    state.transfer(intent_b.public_key, intent_a.public_key, intent_b.payload.asset_in, intent_b.payload.amount_in);
+
+    // Mark nonces as used
+    state.used_nonces.add(intent_a.payload.nonce, true);
+    state.used_nonces.add(intent_b.payload.nonce, true);
 
     event::emit(IntentExecuted {
-        maker: intent_a.public_key,
-        taker: intent_b.public_key,
+        executed_intent_a: ExecutedIntent {
+          public_key: intent_a.public_key,
+          asset_in: intent_a.payload.asset_in,
+          amount_in: intent_a.payload.amount_in,
+          asset_out: intent_a.payload.asset_out,
+          amount_out: intent_a.payload.amount_out,
+        },
 
-        maker_asset_in: intent_a.payload.asset_in,
-        maker_amount_in: intent_a.payload.amount_in,
-        maker_asset_out: intent_a.payload.asset_out,
-        maker_amount_out: intent_a.payload.amount_out,
-
-        taker_asset_in: intent_b.payload.asset_in,
-        taker_amount_in: intent_b.payload.amount_in,
-        taker_asset_out: intent_b.payload.asset_out,
-        taker_amount_out: intent_b.payload.amount_out,
+        executed_intent_b: ExecutedIntent {
+          public_key: intent_b.public_key,
+          asset_in: intent_b.payload.asset_in,
+          amount_in: intent_b.payload.amount_in,
+          asset_out: intent_b.payload.asset_out,
+          amount_out: intent_b.payload.amount_out,
+        },
 
         timestamp: clock.timestamp_ms(),
     });
@@ -230,9 +241,12 @@ fun validate_matching_intents(payload_a: &IntentPayload, payload_b: &IntentPaylo
     );
 }
 
-fun validate_intent_payload(state: &mut State, intent_payload: &IntentPayload, clock: &Clock) {
+fun validate_intent_payload(state: &State, intent_payload: &IntentPayload, clock: &Clock) {
     // Validate deadline
     assert!(clock.timestamp_ms() <= intent_payload.deadline, EIntentExpired);
+
+    // Validate assets
+    assert!(intent_payload.asset_in != intent_payload.asset_out, EInvalidAsset);
 
     // Validate amount
     assert!(intent_payload.amount_in > 0, EZeroAmount);
@@ -240,16 +254,15 @@ fun validate_intent_payload(state: &mut State, intent_payload: &IntentPayload, c
 
     // Validate and track nonce
     assert!(!state.used_nonces.contains(intent_payload.nonce), EInvalidNonce);
-    state.used_nonces.add(intent_payload.nonce, true);
 }
 
-fun validate_signed_intent(state: &mut State, signed_intent: &SignedIntent, clock: &Clock) {
+fun validate_signed_intent(state: &State, signed_intent: &SignedIntent, clock: &Clock) {
     validate_intent_payload(state, &signed_intent.payload, clock);
 
     let intent_payload_bytes = bcs::to_bytes(&signed_intent.payload);
 
-    let valid = match (signed_intent.algorithm) {
-        1 => ed25519::ed25519_verify(&signed_intent.signature, &signed_intent.public_key, &intent_payload_bytes),
+    let valid = match (signed_intent.payload.algorithm) {
+      ALGORITHM_ED25519 => ed25519::ed25519_verify(&signed_intent.signature, &signed_intent.public_key, &intent_payload_bytes),
         _ => false
     };
 
@@ -258,17 +271,18 @@ fun validate_signed_intent(state: &mut State, signed_intent: &SignedIntent, cloc
 
 fun deserialize_signed_intent(bytes: vector<u8>): SignedIntent {
     let mut bcs = bcs::new(bytes);
-    let algorithm = bcs.peel_u8();
 
     // Deserialize IntentPayload fields
+    let algorithm = bcs.peel_u8();
     let nonce = bcs.peel_vec_u8();
-    let asset_in = string::utf8(bcs.peel_vec_u8());
+    let asset_in = bcs.peel_vec_u8().to_string();
     let amount_in = bcs.peel_u256();
-    let asset_out = string::utf8(bcs.peel_vec_u8());
+    let asset_out = bcs.peel_vec_u8().to_string();
     let amount_out = bcs.peel_u256();
     let deadline = bcs.peel_u64();
 
     let payload = IntentPayload {
+        algorithm,
         nonce,
         asset_in,
         amount_in,
@@ -281,7 +295,6 @@ fun deserialize_signed_intent(bytes: vector<u8>): SignedIntent {
     let public_key = bcs.peel_vec_u8();
 
     SignedIntent {
-        algorithm,
         payload,
         signature,
         public_key,
